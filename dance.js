@@ -1,29 +1,12 @@
-/* Little Dance Club — original models, animation and playback of user-supplied melody notes. */
+/* Little Dance Club — original models, animation and playback of a user-supplied audio excerpt. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let dancing = false, dance = 'bounce', danceTime = 0, lastTime = 0;
-  let soundOn = true, audio = null, master = null, musicTimer = null;
-  let audioRequest = 0, nextEvent = 0, nextEventTime = 0;
-  // Only the note sequence supplied by the user. Uppercase = octave 4,
-  // lowercase = octave 5 (ABC-style). Rhythm was not supplied: use 100 BPM.
-  const suppliedPhrases = [
-    'B b e e e e B B d d G',
-    'C d d d C C C B', 'C d d d C C C B',
-    'A B G e e g f# e d G',
-    'C d d d C C C B', 'C d d d C C C B'
-  ];
-  const semitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-  const melody = suppliedPhrases.flatMap(phrase => {
-    const notes = phrase.split(' ');
-    const events = notes.map((note, index) => ({
-      midi: (note[0] === note[0].toUpperCase() ? 60 : 72)
-        + semitones[note[0].toUpperCase()] + (note.includes('#') ? 1 : 0),
-      beats: index === notes.length - 1 ? 1 : .5
-    }));
-    return [...events, { midi: null, beats: .25 }];
-  });
+  let soundOn = true, musicRequest = 0;
+  const music = $('dance-music');
+  music.volume = .45;
   const helloUntil = [0, 0];
   const speech = $('speech');
   let speechTimer;
@@ -37,52 +20,18 @@
     $('sound').setAttribute('aria-pressed', String(soundOn));
     $('sound').setAttribute('aria-label', soundOn ? 'Turn music off' : 'Turn music on');
     $('sound-label').textContent = soundOn ? 'Sound on' : 'Sound off';
-    if (master) master.gain.setTargetAtTime(soundOn ? .16 : 0, audio.currentTime, .015);
-  }
-  function playNote(midi, time, duration) {
-    const frequency = 440 * 2 ** ((midi - 69) / 12);
-    // A soft, MIDI-style keyboard tone with a quiet second harmonic.
-    [[1, .33, 'triangle'], [2, .035, 'sine']].forEach(([harmonic, level, type]) => {
-      const osc = audio.createOscillator(), envelope = audio.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(frequency * harmonic, time);
-      envelope.gain.setValueAtTime(0, time);
-      envelope.gain.linearRampToValueAtTime(level, time + .008);
-      envelope.gain.exponentialRampToValueAtTime(.001, time + duration * .9);
-      osc.connect(envelope); envelope.connect(master);
-      osc.onended = () => { osc.disconnect(); envelope.disconnect(); };
-      osc.start(time); osc.stop(time + duration);
-    });
-  }
-  function scheduleMusic() {
-    if (!audio || audio.state !== 'running' || !dancing || document.hidden) return;
-    if (nextEventTime < audio.currentTime) nextEventTime = audio.currentTime + .035;
-    while (nextEventTime < audio.currentTime + .12) {
-      const event = melody[nextEvent];
-      const duration = event.beats * 60 / 100;
-      if (event.midi !== null) playNote(event.midi, nextEventTime, duration);
-      nextEventTime += duration;
-      nextEvent = (nextEvent + 1) % melody.length;
-    }
+    music.muted = !soundOn;
   }
   async function startMusic() {
-    const request = ++audioRequest;
+    const request = ++musicRequest;
     try {
-      if (!audio) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) throw new Error('Web Audio is unavailable');
-        audio = new AudioContext();
-        master = audio.createGain();
-        master.gain.value = soundOn ? .16 : 0;
-        master.connect(audio.destination);
+      // Called in the dance-button handler so one tap unlocks browser audio.
+      await music.play();
+      if (request !== musicRequest || !dancing || document.hidden) {
+        if (!dancing || document.hidden) music.pause();
       }
-      await audio.resume();
-      if (request !== audioRequest || !dancing || document.hidden) return;
-      if (musicTimer !== null) clearInterval(musicTimer);
-      scheduleMusic();
-      musicTimer = setInterval(scheduleMusic, 40);
     } catch (error) {
-      if (request !== audioRequest) return;
+      if (request !== musicRequest || error.name === 'AbortError') return;
       console.warn('Music could not start:', error);
       say('Tap Sound on to try the music again. ♡');
       soundOn = false;
@@ -90,11 +39,9 @@
     }
   }
   function pauseMusic() {
-    ++audioRequest;
-    if (musicTimer !== null) clearInterval(musicTimer);
-    musicTimer = null;
-    // Suspend the clock and queued notes so the next tap resumes the melody.
-    if (audio && audio.state !== 'closed') audio.suspend().catch(() => {});
+    ++musicRequest;
+    // Keep currentTime so the next dance tap resumes the same part of the song.
+    music.pause();
   }
   $('sound').addEventListener('click', () => {
     soundOn = !soundOn;

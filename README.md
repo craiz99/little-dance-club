@@ -4,13 +4,13 @@ A cute, cartoony 3D dance party starring a friendly Tung Tung Tung Sahur log cha
 
 ## Open it
 
-Open **index.html** in a current browser with WebGL enabled. No installation or build step is required. All fonts and 3D libraries are included locally. The scene and synthesized melody work offline.
+Open **index.html** in a current browser with WebGL enabled. No installation or build step is required. All fonts and 3D libraries are included locally. The scene and bundled MP3 excerpt work offline.
 
 For a local server, run `python3 -m http.server 8000` in this folder, then visit http://localhost:8000.
 
 ## Play
 
-- Tap **Let’s dance!** to start dancing and the supplied melody together. Tap **Take a break** to pause both; the next tap resumes them.
+- Tap **Let’s dance!** to start dancing and music together. Tap **Take a break** to pause both; the next tap resumes them.
 - Choose **Bounce**, **Wiggle**, or **Spin**.
 - Use the top-right sound button to mute/unmute music while the dance continues.
 - Tap **Yay! Confetti** to celebrate.
@@ -32,20 +32,19 @@ You can also use a `/docs` folder and select that folder in Pages settings. No A
 
 - `index.html`: the page and controls.
 - `styles.css`: responsive layout and styling.
-- `dance.js`: original procedural character models, animation, and Web Audio melody synthesis and playback controls.
+- `dance.js`: original procedural character models, animation, and MP3 playback controls.
+- `audio/golden-dance.mp3`: a 60-second excerpt of the user-uploaded MP3, with normalized volume and short fades.
 - `vendor/three.min.js`: Three.js 0.160.1, MIT licensed; license included.
 - `vendor/`: Fredoka and DM Sans fonts, distributed under the SIL Open Font License; licenses included.
 
-The characters and environment are built from 3D geometry, with a procedurally drawn wood texture. No models or audio files need downloading.
+The characters and environment are built from 3D geometry, with a procedurally drawn wood texture. All models are generated in the browser; the music excerpt is bundled with the page.
 
 ## Music
 
-The tune uses only the opening pattern, two repetitions of the next phrase, bridge transition, and two concluding repetitions supplied by the user in chat. It is a short repeating melody, not a transcription of the full song or the linked MuseScore arrangement.
+The soundtrack is the first 60 seconds of the MP3 uploaded by the user in chat (a 192-second stereo recording). The excerpt is encoded as a 128 kbps MP3, normalized to -18 LUFS with a -2 dB true-peak target, and given a short fade-in/fade-out. Playback volume defaults to 45%. It replaces the earlier synthesized note loop.
 
-No timing or explicit octave numbers were provided. The implementation interprets uppercase letters as octave 4 and lowercase letters as octave 5 (ABC-style notation), uses eighth notes at 100 BPM, holds each phrase's final note for one beat, and adds a quarter-beat rest between phrases. These are arrangement assumptions, not verified original-song timing. The soft keyboard sound is synthesized locally through Web Audio.
-
-`golden-melody.mid` contains the same supplied notes and assumed rhythm as a standard MIDI file. The website does not need a MIDI library or a third-party player. It starts music only after a tap, remembers the mute choice, loops the excerpt, and pauses/resumes music with the dance button.
+The bundled audio uses native HTML audio, with no external player or service. It loads only after a dance tap, loops automatically, preserves its position when paused, remembers mute during the session, and pauses when switching away from the tab. Returning to the tab resumes music while dancing remains active. Browsers may require another tap if they block background resume.
 
 ## Validation
 
-JavaScript syntax and local file references were checked. The 3D scene was rendered in Chromium. Browser checks cover automatic audio start from the dance button, generated audio signal, pause/resume, mute, all dance modes, and the mobile layout.
+JavaScript syntax and local file references were checked. Chromium checks cover starting the actual MP3 with the dance button, audio progress, pause/resume, mute, looping, dance controls, and mobile layout. The generated MP3's format, duration, and size were verified with ffprobe.
