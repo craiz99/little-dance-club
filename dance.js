@@ -1,11 +1,11 @@
-/* Little Dance Club — original models, animation and playback of a user-supplied audio excerpt. */
+/* Little Dance Club — original models, animation and playback of the full MIDI theme song. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let dancing = false, dance = 'bounce', danceTime = 0, lastTime = 0;
   let soundOn = true, musicRequest = 0;
-  const music = $('dance-music');
+  const music = new window.ThemeSongPlayer(window.THEME_SONG_MIDI);
   music.volume = .45;
   const helloUntil = [0, 0];
   const speech = $('speech');
@@ -40,7 +40,7 @@
   }
   function pauseMusic() {
     ++musicRequest;
-    // Keep currentTime so the next dance tap resumes the same part of the song.
+    // Preserve the MIDI clock so the next dance tap resumes the same notes.
     music.pause();
   }
   $('sound').addEventListener('click', () => {
