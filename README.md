@@ -4,7 +4,7 @@ A cute, cartoony 3D dance party starring a friendly Tung Tung Tung Sahur log cha
 
 ## Open it
 
-Open **index.html** in a current browser with WebGL enabled. No installation or build step is required. All fonts and 3D libraries are included locally. The scene and bundled MP3 excerpt work offline.
+Open **index.html** in a current browser with WebGL enabled. No installation or build step is required. All fonts and 3D libraries are included locally. The scene and MIDI theme song work offline.
 
 For a local server, run `python3 -m http.server 8000` in this folder, then visit http://localhost:8000.
 
@@ -32,8 +32,11 @@ You can also use a `/docs` folder and select that folder in Pages settings. No A
 
 - `index.html`: the page and controls.
 - `styles.css`: responsive layout and styling.
-- `dance.js`: original procedural character models, animation, and MP3 playback controls.
-- `audio/golden-dance.mp3`: a 60-second excerpt of the user-uploaded MP3, with normalized volume and short fades.
+- `dance.js`: original procedural character models, animation, and playback controls.
+- `theme-song-player.js`: local Web Audio synthesis, MIDI scheduling, pause/resume, mute, and looping.
+- `audio/theme-song.mid`: the full 3:12 theme song, automatically transcribed from the user-uploaded recording.
+- `audio/theme-song-data.js`: generated script data containing the same MIDI bytes, for offline/file-based playback.
+- `vendor/midi.js`: @tonejs/midi 2.0.28 parser, MIT licensed; license included.
 - `vendor/three.min.js`: Three.js 0.160.1, MIT licensed; license included.
 - `vendor/`: Fredoka and DM Sans fonts, distributed under the SIL Open Font License; licenses included.
 
@@ -41,10 +44,18 @@ The characters and environment are built from 3D geometry, with a procedurally d
 
 ## Music
 
-The soundtrack is the first 60 seconds of the MP3 uploaded by the user in chat (a 192-second stereo recording). The excerpt is encoded as a 128 kbps MP3, normalized to -18 LUFS with a -2 dB true-peak target, and given a short fade-in/fade-out. Playback volume defaults to 45%. It replaces the earlier synthesized note loop.
+The theme song is a full-length automatic MIDI transcription of the uploaded recording: about 3:12 and 2,240 detected notes. The source recording and earlier short MIDI loop have been removed from this version. The file and its MIDI track names use “Theme song.” Transcription is approximate; some notes/chords may need cleanup. It uses a soft keyboard-style sound rather than reproducing the original recording's instruments.
 
-The bundled audio uses native HTML audio, with no external player or service. It loads only after a dance tap, loops automatically, preserves its position when paused, remembers mute during the session, and pauses when switching away from the tab. Returning to the tab resumes music while dancing remains active. Browsers may require another tap if they block background resume.
+MIDI playback is synthesized locally using Web Audio and a bundled MIDI parser. The first dance tap unlocks audio and starts the music. The music loops, pauses and resumes with dancing, remembers mute during the session, and pauses when switching away from the tab. No external player, soundfont download, or runtime service is required. Browsers may require another tap if they block background resume.
+
+`audio/theme-song.mid` is the canonical music file. `audio/theme-song-data.js` embeds those same bytes so opening `index.html` directly still works. After replacing the MIDI, regenerate the data file with:
+
+```sh
+python3 scripts/build-theme-song-data.py
+```
+
+No regeneration is required to use this checkout.
 
 ## Validation
 
-JavaScript syntax and local file references were checked. Chromium checks cover starting the actual MP3 with the dance button, audio progress, pause/resume, mute, looping, dance controls, and mobile layout. The generated MP3's format, duration, and size were verified with ffprobe.
+Run the asset checks with `node --test tests/theme-song.test.cjs`. JavaScript syntax, full MIDI duration and notes, and the embedded MIDI's consistency are checked. Chromium verification covers sound starting with the dance button, pause/resume, mute, looping, rapid clicks, tab visibility, and mobile layout.
