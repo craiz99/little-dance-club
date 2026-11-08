@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f8ee">
+  <meta name="description" content="A happy little 3D dance party with Tung Tung Tung Sahur and Panda. Pick a dance, play a tune, and join in!">
+  <title>Little Dance Club · Tung & Panda</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='20' fill='%23dcebb5'/%3E%3Ctext y='47' x='8' font-size='44'%3E🐼%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/three.min.js"></script>
+  <script defer src="dance.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Little Dance Club home"><span class="brand-mark" aria-hidden="true">✳</span> little dance club<span class="brand-dot">.</span></a>
+      <span class="header-note"><span></span> A little world of happy</span>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <div class="eyebrow"><span aria-hidden="true">✦</span> TWO BEST FRIENDS. ONE HAPPY BEAT.</div>
+        <h1 id="title">Tiny feet.<br class="mobile-break"> <span>Big dance party.</span><span class="title-spark" aria-hidden="true">✧</span></h1>
+        <p>Tung Tung Tung Sahur & Panda are ready to boogie.<br>Pick a move, turn up the happy, and dance along!</p>
+      </section>
+      <section class="playground" aria-label="3D dance party">
+        <div class="scene-wrap" id="scene-wrap">
+          <div id="scene" role="img" aria-label="Cute 3D wooden Tung Tung Tung Sahur and a panda dancing together on a pink stage in a sunny park"></div>
+          <div class="scene-top"><span class="live-pill"><i></i> THE HAPPY PLACE</span><button id="sound" class="sound-button" aria-label="Turn music on" aria-pressed="false"><span id="sound-icon" aria-hidden="true">♫</span><span id="sound-label">Sound off</span></button></div>
+          <div class="speech" id="speech" aria-live="polite">Hey, dancing buddy! <span aria-hidden="true">♡</span></div>
+          <div class="character-label tung-label"><strong>Tung Tung</strong><span>the groovy little log</span></div>
+          <div class="character-label panda-label"><strong>Panda</strong><span>the bouncy bestie</span></div>
+          <div class="scene-bottom"><span><i class="tiny-star">✦</i> Made for happy little wiggles</span><span class="three-d">3D PLAYTIME <span aria-hidden="true">↗</span></span></div>
+          <div id="fallback" hidden><span>🐼 🪵</span><strong>This little stage needs WebGL.</strong><p>Try opening it in an up-to-date Chrome, Safari, or Firefox browser.</p></div>
+          <div id="confetti" aria-hidden="true"></div>
+        </div>
+        <div class="control-panel">
+          <div class="dance-picker"><span class="control-label">PICK YOUR GROOVE</span><div class="dance-options" role="group" aria-label="Dance style"><button class="dance active" data-dance="bounce" aria-pressed="true"><span aria-hidden="true">↟</span> Bounce</button><button class="dance" data-dance="wiggle" aria-pressed="false"><span aria-hidden="true">〰</span> Wiggle</button><button class="dance" data-dance="spin" aria-pressed="false"><span aria-hidden="true">⟳</span> Spin</button></div></div>
+          <button id="play" class="play-button" aria-pressed="false"><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">Let’s dance!</span></button>
+          <button id="celebrate" class="confetti-button"><span aria-hidden="true">✧</span> Yay! Confetti</button>
+        </div>
+      </section>
+      <div class="under-stage"><span class="tip"><span aria-hidden="true">☝</span> Psst… tap a friend for a little hello!</span><span class="reassurance">Just a little joy. No scores, no rush. <span aria-hidden="true">♡</span></span></div>
+    </main>
+    <footer><span>A happy place for little movers.</span><span>Made with a little rhythm & a lot of <span class="heart" aria-label="love">♥</span></span></footer>
+  </div>
+</body>
+</html>
