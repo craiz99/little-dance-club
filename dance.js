@@ -1,10 +1,29 @@
-/* Little Dance Club — original models, animation and the official MuseScore music embed. */
+/* Little Dance Club — original models, animation and playback of user-supplied melody notes. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let dancing = false, dance = 'bounce', danceTime = 0, lastTime = 0;
-  let musicEnabled = true, musicFrame = null;
+  let soundOn = true, audio = null, master = null, musicTimer = null;
+  let audioRequest = 0, nextEvent = 0, nextEventTime = 0;
+  // Only the note sequence supplied by the user. Uppercase = octave 4,
+  // lowercase = octave 5 (ABC-style). Rhythm was not supplied: use 100 BPM.
+  const suppliedPhrases = [
+    'B b e e e e B B d d G',
+    'C d d d C C C B', 'C d d d C C C B',
+    'A B G e e g f# e d G',
+    'C d d d C C C B', 'C d d d C C C B'
+  ];
+  const semitones = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const melody = suppliedPhrases.flatMap(phrase => {
+    const notes = phrase.split(' ');
+    const events = notes.map((note, index) => ({
+      midi: (note[0] === note[0].toUpperCase() ? 60 : 72)
+        + semitones[note[0].toUpperCase()] + (note.includes('#') ? 1 : 0),
+      beats: index === notes.length - 1 ? 1 : .5
+    }));
+    return [...events, { midi: null, beats: .25 }];
+  });
   const helloUntil = [0, 0];
   const speech = $('speech');
   let speechTimer;
@@ -14,40 +33,73 @@
     speechTimer = setTimeout(() => { speech.innerHTML = 'Hey, dancing buddy! <span aria-hidden="true">♡</span>'; }, 3200);
   }
 
-  // Keep playback in MuseScore's official player. Never download the score/audio.
-  function showMusic() {
-    if (musicFrame) return;
-    musicFrame = document.createElement('iframe');
-    musicFrame.title = 'Golden — simplified piano arrangement on MuseScore';
-    musicFrame.src = 'https://musescore.com/user/5872086/scores/26406532/embed';
-    musicFrame.allow = 'autoplay; fullscreen';
-    musicFrame.allowFullscreen = true;
-    musicFrame.referrerPolicy = 'strict-origin-when-cross-origin';
-    $('music-frame').appendChild(musicFrame);
-    $('music-panel').hidden = false;
-    updateMusicButton();
+  function updateSound() {
+    $('sound').setAttribute('aria-pressed', String(soundOn));
+    $('sound').setAttribute('aria-label', soundOn ? 'Turn music off' : 'Turn music on');
+    $('sound-label').textContent = soundOn ? 'Sound on' : 'Sound off';
+    if (master) master.gain.setTargetAtTime(soundOn ? .16 : 0, audio.currentTime, .015);
   }
-  function stopMusic() {
-    // Removing the frame stops all its playback, including when taking a break.
-    if (musicFrame) musicFrame.remove();
-    musicFrame = null;
-    $('music-panel').hidden = true;
-    updateMusicButton();
+  function playNote(midi, time, duration) {
+    const frequency = 440 * 2 ** ((midi - 69) / 12);
+    // A soft, MIDI-style keyboard tone with a quiet second harmonic.
+    [[1, .33, 'triangle'], [2, .035, 'sine']].forEach(([harmonic, level, type]) => {
+      const osc = audio.createOscillator(), envelope = audio.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(frequency * harmonic, time);
+      envelope.gain.setValueAtTime(0, time);
+      envelope.gain.linearRampToValueAtTime(level, time + .008);
+      envelope.gain.exponentialRampToValueAtTime(.001, time + duration * .9);
+      osc.connect(envelope); envelope.connect(master);
+      osc.onended = () => { osc.disconnect(); envelope.disconnect(); };
+      osc.start(time); osc.stop(time + duration);
+    });
   }
-  function updateMusicButton() {
-    $('sound').setAttribute('aria-expanded', String(Boolean(musicFrame)));
-    $('sound').setAttribute('aria-label', musicFrame ? 'Stop music and close player' : 'Open Golden music player');
-    $('sound-label').textContent = musicFrame ? 'Stop music' : 'Music';
+  function scheduleMusic() {
+    if (!audio || audio.state !== 'running' || !dancing || document.hidden) return;
+    if (nextEventTime < audio.currentTime) nextEventTime = audio.currentTime + .035;
+    while (nextEventTime < audio.currentTime + .12) {
+      const event = melody[nextEvent];
+      const duration = event.beats * 60 / 100;
+      if (event.midi !== null) playNote(event.midi, nextEventTime, duration);
+      nextEventTime += duration;
+      nextEvent = (nextEvent + 1) % melody.length;
+    }
+  }
+  async function startMusic() {
+    const request = ++audioRequest;
+    try {
+      if (!audio) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) throw new Error('Web Audio is unavailable');
+        audio = new AudioContext();
+        master = audio.createGain();
+        master.gain.value = soundOn ? .16 : 0;
+        master.connect(audio.destination);
+      }
+      await audio.resume();
+      if (request !== audioRequest || !dancing || document.hidden) return;
+      if (musicTimer !== null) clearInterval(musicTimer);
+      scheduleMusic();
+      musicTimer = setInterval(scheduleMusic, 40);
+    } catch (error) {
+      if (request !== audioRequest) return;
+      console.warn('Music could not start:', error);
+      say('Tap Sound on to try the music again. ♡');
+      soundOn = false;
+      updateSound();
+    }
+  }
+  function pauseMusic() {
+    ++audioRequest;
+    if (musicTimer !== null) clearInterval(musicTimer);
+    musicTimer = null;
+    // Suspend the clock and queued notes so the next tap resumes the melody.
+    if (audio && audio.state !== 'closed') audio.suspend().catch(() => {});
   }
   $('sound').addEventListener('click', () => {
-    if (musicFrame) {
-      musicEnabled = false;
-      stopMusic();
-    } else {
-      musicEnabled = true;
-      showMusic();
-      say('Tap ▶ in the music player for Golden! ♡');
-    }
+    soundOn = !soundOn;
+    updateSound();
+    if (dancing && soundOn) startMusic();
   });
   $('play').addEventListener('click', () => {
     dancing = !dancing;
@@ -55,14 +107,18 @@
     $('play-label').textContent = dancing ? 'Take a break' : 'Let’s dance!';
     $('play-icon').textContent = dancing ? 'Ⅱ' : '▶';
     if (dancing) {
-      if (musicEnabled) showMusic();
-      say(musicEnabled ? 'Tap ▶ below for Golden! ♡' : 'You’ve got the moves! ♡');
+      startMusic();
+      say('You’ve got the moves! ♡');
     } else {
-      stopMusic();
+      pauseMusic();
       say('And… a little rest. ♡');
     }
   });
-  document.addEventListener('visibilitychange', () => { lastTime = 0; });
+  document.addEventListener('visibilitychange', () => {
+    lastTime = 0;
+    if (document.hidden) pauseMusic();
+    else if (dancing) startMusic();
+  });
   document.querySelectorAll('.dance').forEach(button => button.addEventListener('click', () => {
     dance = button.dataset.dance;
     danceTime = 0;
