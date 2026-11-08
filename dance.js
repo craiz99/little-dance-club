@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let dancing = false, dance = 'bounce', danceTime = 0, lastTime = 0;
-  let soundOn = true, musicRequest = 0;
+  let soundOn = true, musicFailed = false, musicRequest = 0;
   const music = new window.ThemeSongPlayer(window.THEME_SONG_MIDI);
   music.volume = .45;
   const helloUntil = [0, 0];
@@ -17,13 +17,15 @@
   }
 
   function updateSound() {
-    $('sound').setAttribute('aria-pressed', String(soundOn));
-    $('sound').setAttribute('aria-label', soundOn ? 'Turn music off' : 'Turn music on');
-    $('sound-label').textContent = soundOn ? 'Sound on' : 'Sound off';
+    $('sound').setAttribute('aria-pressed', String(soundOn && !musicFailed));
+    $('sound').setAttribute('aria-label', musicFailed ? 'Retry music playback' : soundOn ? 'Turn music off' : 'Turn music on');
+    $('sound-label').textContent = musicFailed ? 'Retry sound' : soundOn ? 'Sound on' : 'Sound off';
     music.muted = !soundOn;
   }
   async function startMusic() {
     const request = ++musicRequest;
+    musicFailed = false;
+    updateSound();
     try {
       // Called in the dance-button handler so one tap unlocks browser audio.
       await music.play();
@@ -33,8 +35,8 @@
     } catch (error) {
       if (request !== musicRequest || error.name === 'AbortError') return;
       console.warn('Music could not start:', error);
-      say('Tap Sound on to try the music again. ♡');
-      soundOn = false;
+      say('Tap Retry sound to try again. ♡');
+      musicFailed = true;
       updateSound();
     }
   }
@@ -44,15 +46,23 @@
     music.pause();
   }
   $('sound').addEventListener('click', () => {
-    soundOn = !soundOn;
+    soundOn = musicFailed || !soundOn;
+    musicFailed = false;
     updateSound();
-    if (dancing && soundOn) startMusic();
+    if (soundOn) {
+      dancing = true;
+      updateDanceButton();
+      startMusic();
+    }
   });
-  $('play').addEventListener('click', () => {
-    dancing = !dancing;
+  function updateDanceButton() {
     $('play').setAttribute('aria-pressed', String(dancing));
     $('play-label').textContent = dancing ? 'Take a break' : 'Let’s dance!';
     $('play-icon').textContent = dancing ? 'Ⅱ' : '▶';
+  }
+  $('play').addEventListener('click', () => {
+    dancing = !dancing;
+    updateDanceButton();
     if (dancing) {
       startMusic();
       say('You’ve got the moves! ♡');

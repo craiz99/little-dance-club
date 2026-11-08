@@ -9,6 +9,7 @@
       this.notes = null;
       this.duration = 0;
       this.origin = null;
+      this.resumePosition = 0;
       this.nextNote = 0;
       this.timer = null;
       this.request = 0;
@@ -26,7 +27,7 @@
       this.updateGain();
     }
     get currentTime() {
-      if (this.origin === null || !this.context) return 0;
+      if (this.origin === null || !this.context) return this.resumePosition;
       return Math.max(0, this.context.currentTime - this.origin) % this.duration;
     }
 
@@ -48,6 +49,7 @@
           throw new Error('Theme song contains no playable MIDI notes');
         }
       }
+      if (this.context && ['closed', 'interrupted'].includes(this.context.state)) this.resetAudioContext();
       if (!this.context) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) throw new Error('Web Audio is unavailable');
@@ -68,14 +70,44 @@
     async play() {
       const request = ++this.request;
       // Decode and unlock audio synchronously within the first dance tap.
-      this.prepare();
-      await this.context.resume();
+      try {
+        this.prepare();
+        // A silent frame also unlocks audio output on mobile Safari.
+        const unlock = this.context.createBufferSource();
+        unlock.buffer = this.context.createBuffer(1, 1, this.context.sampleRate);
+        unlock.connect(this.context.destination);
+        unlock.onended = () => unlock.disconnect();
+        unlock.start();
+        await this.context.resume();
+        if (request === this.request && this.context.state !== 'running') throw new Error('Audio output is unavailable');
+      } catch (error) {
+        if (request === this.request) this.resetAudioContext();
+        throw error;
+      }
       if (request !== this.request) return;
-      if (this.origin === null) this.origin = this.context.currentTime + .035;
+      if (this.origin === null) this.origin = this.context.currentTime + .035 - this.resumePosition;
       this.running = true;
       if (this.timer !== null) clearInterval(this.timer);
       this.schedule();
       this.timer = setInterval(() => this.schedule(), 40);
+    }
+
+    resetAudioContext() {
+      this.resumePosition = this.currentTime;
+      this.running = false;
+      if (this.timer !== null) clearInterval(this.timer);
+      this.timer = null;
+      for (const voice of this.voices) {
+        try { voice.stop(); } catch (_) { /* Already ended. */ }
+        voice.disconnect();
+      }
+      this.voices.clear();
+      if (this.context && this.context.state !== 'closed') this.context.close().catch(() => {});
+      this.context = null;
+      this.master = null;
+      this.compressor = null;
+      this.origin = null;
+      this.nextNote = 0;
     }
 
     pause() {

@@ -12,7 +12,7 @@ For a local server, run `python3 -m http.server 8000` in this folder, then visit
 
 - Tap **Let’s dance!** to start dancing and music together. Tap **Take a break** to pause both; the next tap resumes them.
 - Choose **Bounce**, **Wiggle**, or **Spin**.
-- Use the top-right sound button to mute/unmute music while the dance continues.
+- Use the top-right sound button to mute/unmute music. Turning sound on starts the dance if it was paused. If audio startup fails, **Retry sound** makes a fresh playback attempt.
 - Tap **Yay! Confetti** to celebrate.
 - Tap either character or their name badge for a friendly greeting. Name badges also work with Tab and Enter/Space.
 
@@ -58,4 +58,4 @@ No regeneration is required to use this checkout.
 
 ## Validation
 
-Run the asset checks with `node --test tests/theme-song.test.cjs`. JavaScript syntax, full MIDI duration and notes, and the embedded MIDI's consistency are checked. Chromium verification covers sound starting with the dance button, pause/resume, mute, looping, rapid clicks, tab visibility, and mobile layout.
+Run the MIDI and audio-recovery checks with `node --test tests/*.test.cjs`. JavaScript syntax, full MIDI duration and notes, and the embedded MIDI's consistency are checked. Chromium verification covers sound starting with the dance button, pause/resume, mute, looping, rapid clicks, tab visibility, and mobile layout. Recovery checks cover failed output startup and replacement of closed/interrupted audio engines.
