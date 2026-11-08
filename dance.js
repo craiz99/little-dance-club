@@ -1,11 +1,10 @@
-/* Little Dance Club — original models, animation and synthesized music. */
+/* Little Dance Club — original models, animation and the official MuseScore music embed. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let dancing = false, dance = 'bounce', danceTime = 0, lastTime = 0;
-  let soundOn = false, soundChosen = false, firstPlay = true;
-  let audio, master, timer, nextBeat = 0, beat = 0;
+  let musicEnabled = true, musicFrame = null;
   const helloUntil = [0, 0];
   const speech = $('speech');
   let speechTimer;
@@ -15,74 +14,55 @@
     speechTimer = setTimeout(() => { speech.innerHTML = 'Hey, dancing buddy! <span aria-hidden="true">♡</span>'; }, 3200);
   }
 
-  // Audio is created only in a click handler, at a gentle fixed volume.
-  function initAudio() {
-    if (!audio) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) { say('Let’s enjoy a quiet little dance!'); return false; }
-      audio = new AudioContext();
-      master = audio.createGain();
-      master.gain.value = .16;
-      master.connect(audio.destination);
-    }
-    audio.resume().catch(() => { soundOn = false; updateSound(); });
-    return true;
+  // Keep playback in MuseScore's official player. Never download the score/audio.
+  function showMusic() {
+    if (musicFrame) return;
+    musicFrame = document.createElement('iframe');
+    musicFrame.title = 'Golden — simplified piano arrangement on MuseScore';
+    musicFrame.src = 'https://musescore.com/user/5872086/scores/26406532/embed';
+    musicFrame.allow = 'autoplay; fullscreen';
+    musicFrame.allowFullscreen = true;
+    musicFrame.referrerPolicy = 'strict-origin-when-cross-origin';
+    $('music-frame').appendChild(musicFrame);
+    $('music-panel').hidden = false;
+    updateMusicButton();
   }
-  function tone(frequency, time, duration, volume, type = 'sine') {
-    const osc = audio.createOscillator(), envelope = audio.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(frequency, time);
-    envelope.gain.setValueAtTime(0, time);
-    envelope.gain.linearRampToValueAtTime(volume, time + .012);
-    envelope.gain.exponentialRampToValueAtTime(.001, time + duration);
-    osc.connect(envelope); envelope.connect(master);
-    osc.start(time); osc.stop(time + duration + .03);
+  function stopMusic() {
+    // Removing the frame stops all its playback, including when taking a break.
+    if (musicFrame) musicFrame.remove();
+    musicFrame = null;
+    $('music-panel').hidden = true;
+    updateMusicButton();
   }
-  function scheduleMusic() {
-    if (!audio || !soundOn || !dancing || document.hidden) return;
-    const melody = [523.25,659.25,783.99,659.25,587.33,659.25,523.25,0,659.25,783.99,880,783.99,659.25,587.33,523.25,0];
-    // Schedule just ahead, so the beat stays steady without building a queue.
-    if (nextBeat < audio.currentTime) nextBeat = audio.currentTime + .04;
-    while (nextBeat < audio.currentTime + .13) {
-      const note = melody[beat % melody.length];
-      if (note) { tone(note, nextBeat, .22, .28, 'triangle'); tone(note * 2, nextBeat, .12, .035); }
-      if (beat % 2 === 0) tone(beat % 8 < 4 ? 130.81 : 98, nextBeat, .25, .3);
-      if (beat % 4 === 0) tone(65.4, nextBeat, .11, .55);
-      if (beat % 2 === 1) tone(1567.98, nextBeat, .035, .06, 'triangle');
-      beat++; nextBeat += .3;
-    }
-  }
-  function updateSound() {
-    $('sound').setAttribute('aria-pressed', String(soundOn));
-    $('sound').setAttribute('aria-label', soundOn ? 'Turn music off' : 'Turn music on');
-    $('sound-label').textContent = soundOn ? 'Sound on' : 'Sound off';
-    $('sound-icon').textContent = soundOn ? '♫' : '♪';
-    if (master) master.gain.setTargetAtTime(soundOn && dancing && !document.hidden ? .16 : 0, audio.currentTime, .03);
+  function updateMusicButton() {
+    $('sound').setAttribute('aria-expanded', String(Boolean(musicFrame)));
+    $('sound').setAttribute('aria-label', musicFrame ? 'Stop music and close player' : 'Open Golden music player');
+    $('sound-label').textContent = musicFrame ? 'Stop music' : 'Music';
   }
   $('sound').addEventListener('click', () => {
-    soundChosen = true;
-    soundOn = !soundOn && initAudio();
-    nextBeat = audio ? audio.currentTime + .04 : 0;
-    updateSound(); scheduleMusic();
+    if (musicFrame) {
+      musicEnabled = false;
+      stopMusic();
+    } else {
+      musicEnabled = true;
+      showMusic();
+      say('Tap ▶ in the music player for Golden! ♡');
+    }
   });
   $('play').addEventListener('click', () => {
     dancing = !dancing;
-    if (dancing && firstPlay) {
-      firstPlay = false;
-      if (!soundChosen) soundOn = initAudio();
-    }
-    if (dancing && soundOn) initAudio();
     $('play').setAttribute('aria-pressed', String(dancing));
     $('play-label').textContent = dancing ? 'Take a break' : 'Let’s dance!';
     $('play-icon').textContent = dancing ? 'Ⅱ' : '▶';
-    say(dancing ? 'You’ve got the moves! ♡' : 'And… a little rest. ♡');
-    nextBeat = audio ? audio.currentTime + .04 : 0;
-    updateSound(); scheduleMusic();
+    if (dancing) {
+      if (musicEnabled) showMusic();
+      say(musicEnabled ? 'Tap ▶ below for Golden! ♡' : 'You’ve got the moves! ♡');
+    } else {
+      stopMusic();
+      say('And… a little rest. ♡');
+    }
   });
-  timer = setInterval(scheduleMusic, 60);
-  document.addEventListener('visibilitychange', () => {
-    lastTime = 0;
-    if (audio) { nextBeat = audio.currentTime + .04; updateSound(); }
-  });
+  document.addEventListener('visibilitychange', () => { lastTime = 0; });
   document.querySelectorAll('.dance').forEach(button => button.addEventListener('click', () => {
     dance = button.dataset.dance;
     danceTime = 0;
